@@ -1,0 +1,32 @@
+services:
+  consul-server:
+    image: consul:1.14.1
+    container_name: consul-server
+    ports:
+      - 8500:8500
+    volumes:
+      - ./consul-server/config.hcl:/consul/config/config.hcl
+    command:
+      - agent
+      - -config-dir=/consul/config
+
+  backend:
+    build: ./backend
+    container_name: backend
+    volumes:
+      - ./backend/client.hcl:/consul/config/client.hcl
+      - ./backend/backend.hcl:/consul/config/backend.hcl
+    depends_on:
+      - consul-server
+
+  frontend:
+    build: ./frontend
+    container_name: frontend
+    ports:
+      - 19000:19000
+      - 9091:9091
+    volumes:
+      - ./frontend/client.hcl:/consul/config/client.hcl
+      - ./frontend/frontend.hcl:/consul/config/frontend.hcl
+    depends_on:
+      - backend
