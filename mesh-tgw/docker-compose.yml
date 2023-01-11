@@ -1,0 +1,63 @@
+services:
+  consul-server:
+    image: consul:1.14.2
+    container_name: consul-server
+    ports:
+      - 8500:8500
+    volumes:
+      - ./consul-server/config.hcl:/consul/config/config.hcl
+    command:
+      - agent
+      - -config-dir=/consul/config
+    networks:
+      internal:
+        ipv4_address: 10.5.0.2
+
+  external-app:
+    container_name: external-app
+    image: nicholasjackson/fake-service:v0.24.2
+    networks:
+      external:
+        ipv4_address: 10.6.0.2
+
+  tgw:
+    build: ./tgw
+    container_name: tgw
+    volumes:
+      - ./tgw/client.hcl:/consul/config/client.hcl
+    ports:
+      - 19001:19001
+    depends_on:
+      - consul-server
+    networks:
+      internal:
+        ipv4_address: 10.5.0.3
+      external:
+        ipv4_address: 10.6.0.3
+
+  internal-app:
+    build: ./internal-app
+    container_name: internal-app
+    ports:
+      - 19000:19000
+      - 9091:9091
+    volumes:
+      - ./internal-app/client.hcl:/consul/config/client.hcl
+      - ./internal-app/service.hcl:/consul/config/service.hcl
+    depends_on:
+      - tgw
+    networks:
+      internal:
+        ipv4_address: 10.5.0.4
+
+networks:
+  internal:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.5.0.0/16
+  external:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.6.0.0/16
